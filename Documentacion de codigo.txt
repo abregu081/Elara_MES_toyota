@@ -1,0 +1,30 @@
+Version 3.0
+
+<Variables globales>
+logSDK: metodo de escritura de logs de errores
+VPortIN: Objeto del puerto COM de entrada
+VPortOUT: Objeto del puerto COM de salida
+n_char: numero de caracteres de imei
+threads: hilos abiertos
+Serial_IN: Numero de puerto configurado en Setting.ini
+Serial_OUT: Numero de puerto configurado en Setting.ini
+
+
+<Funciones>
+debug(): modo retransmision sin pasar por SIM
+mensaje(): Abre popup de mensaje de error
+msg_JSON(): General el JSON de metodo POST
+CheckSim(): Consulta con SIM
+ResendPort(): Realiza la verificacion de estado de los leds de la estacion
+PortCom(): Inicializacion del puerto COM. Genera Hilo ResendPort()
+
+<Descripcion>
+<Resumen>
+1- lectura de puerto COM de entrada. Obtengo IMEI
+2- Consulta de la configuracion de la estacion IC
+3- Consulta de SIM con la informacion recolectada
+4a- Si el retorno de SIM es true, reenvio informacion de IMEI a la controladora
+4b- Si el retorno de SIM es false, muestro popup con la descripcion de las diferencias encontradas
+
+<Detalle>
+1- 

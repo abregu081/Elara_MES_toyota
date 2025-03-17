@@ -1,21 +1,29 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
- 
 from cx_Freeze import setup, Executable
 
-includes = []
-includefiles = []
-excludes = ['Tkinter']
-packages = ['os', 'socket']
+# Archivos adicionales (imágenes, iconos, etc.)
+includefiles = [r"E:\MES_Abregu\assets\Elara-logo.ico",r"E:\MES_Abregu\assets\Elara logo.png",r"E:\MES_Abregu\assets\Logo_Mirgor.png",r"E:\MES_Abregu\setting.cfg"]
 
-setup(
- name="MESxLog",
- version="1.1",
- description="MESxLog version 1.1",
- options = {'build_exe': {'excludes':excludes,'packages':packages,'include_files':includefiles}}, 
- executables = [Executable("MESxLog.py")],
- )
-
+# Dependencias opcionales (si tienes módulos externos)
 build_exe_options = {
-                 "includes":      includes,
+    "packages": ["os"],  # Agrega otros módulos si los necesitas
+    "includes": ["MESxLog", "serverSocket"],  # Asegura que incluya estos archivos
+    "include_files": includefiles,
 }
+
+# Configuración del ejecutable
+executables = [
+    Executable(
+        "Main.py",  # Archivo principal
+        target_name="Elara.exe",  # Nombre del ejecutable
+        icon="Elara-logo.ico",  # Ícono del ejecutable
+    )
+]
+
+# Setup de instalación
+setup(
+    name="Elara",
+    version="1.0",
+    description="Aplicación Elara con cx_Freeze",
+    options={"build_exe": build_exe_options},
+    executables=executables,
+)

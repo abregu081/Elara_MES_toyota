@@ -213,7 +213,7 @@ class HermanacionApp(tk.Tk):
 
         # --- FRAME BOTONES PASS y FAIL (fila 1 del panel derecho)
         botones_frame = tk.Frame(right_side_frame, bg="white", bd=2, relief="solid")
-        botones_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=20)
+        botones_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
         botones_frame.columnconfigure(0, weight=1)
         botones_frame.columnconfigure(1, weight=1)
 
@@ -241,7 +241,7 @@ class HermanacionApp(tk.Tk):
 
         # --- BOTÓN RESET (fila 2 del panel derecho)
         reset_button = tk.Button(right_side_frame, text="RESET", foreground="white", bg="blue" , command=self.reset_entries)
-        reset_button.grid(row=2, column=0, sticky="ew", padx=10, pady=60, ipadx=10, ipady=5)
+        reset_button.grid(row=2, column=0, sticky="ew", padx=10, pady=10, ipadx=10, ipady=5)
 
         # ----------------------------------------------------------------
         # FRAME DE ESTADÍSTICAS – fondo blanco (Fila 3)
@@ -320,7 +320,7 @@ class HermanacionApp(tk.Tk):
             return
 
         ip = mes.setting.get("ip", "")
-        port = int(mes.setting.get("port", "0"))
+        port = int(mes.setting.get("port", ""))
         process = mes.setting.get("process", "")
         station = mes.setting.get("station", "")
 
@@ -550,7 +550,7 @@ class HermanacionApp(tk.Tk):
                 self.timer_started = True
 
             ip = mes.setting.get("ip", "")
-            port = int(mes.setting.get("port", "0"))
+            port = int(mes.setting.get("port", ""))
             process = mes.setting.get("process", "")
             station = mes.setting.get("station", "")
 
@@ -602,7 +602,7 @@ class HermanacionApp(tk.Tk):
 
         if len(current) >= 25:
             ip = mes.setting.get("ip", "")
-            port = int(mes.setting.get("port", "0"))
+            port = int(mes.setting.get("port", ""))
             process = mes.setting.get("process", "")
             station = mes.setting.get("station", "")
 
@@ -655,7 +655,7 @@ class HermanacionApp(tk.Tk):
         sn1 = self.housing_entry.get().strip()
         sn2 = self.pcb_entry.get().strip()
         ip = mes.setting.get("ip", "")
-        port = int(mes.setting.get("port", "0"))
+        port = int(mes.setting.get("port", ""))
         process = mes.setting.get("process", "")
         station = mes.setting.get("station", "")
         bcmp_msg = f"BCMP|process={process}|station={station}|id={sn2}|pid={sn1}|status=PASS"
@@ -701,7 +701,7 @@ class HermanacionApp(tk.Tk):
         return False
 
     # ----------------------------------------------------------------
-    # Reset
+    # Reset- metodo para validar las secuencias y metodos
     # ----------------------------------------------------------------
     def reset_entries(self):
         self.sn1_var.set("")
@@ -720,7 +720,7 @@ class HermanacionApp(tk.Tk):
         self.housing_entry.focus_set()
 
     # ----------------------------------------------------------------
-    # Log
+    # Log - muestra los mensajes en tiempo real y en directo
     # ----------------------------------------------------------------
     def _log_message(self, msg):
         self.chat_text.config(state="normal")

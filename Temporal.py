@@ -15,7 +15,6 @@ class HermanacionApp(tk.Tk):
 
         #estilo de los botones
 
-
         # Debounces para evitar múltiples validaciones
         self._debounce_id = None
         self._debounce_id_sn2 = None
@@ -169,7 +168,7 @@ class HermanacionApp(tk.Tk):
         # Combobox para seleccionar el modo
         self.modo_var = tk.StringVar()
         self.modo_combobox = ttk.Combobox(config_frame, textvariable=self.modo_var,
-                                          values=["Auto", "Manual"], state="readonly", width=10)
+                                          values=["Auto", "Manual","Version Simple"], state="readonly", width=10)
         self.modo_combobox.current(0)
         self.modo_combobox.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
         # Al cambiar de modo, llamamos a la función para habilitar/deshabilitar PASS/FAIL
@@ -300,6 +299,12 @@ class HermanacionApp(tk.Tk):
         if modo_actual == "Manual":
             self.manual_pass_button.config(state="normal")
             self.manual_fail_button.config(state="normal")
+        elif modo_actual == "Version Simple":
+            # Deshabilitamos PCB, no se usa en modo simple
+            self.pcb_entry.config(state="disabled")
+            # Deshabilitamos los botones manuales
+            self.manual_pass_button.config(state="disabled")
+            self.manual_fail_button.config(state="disabled")
         else:
             self.manual_pass_button.config(state="disabled")
             self.manual_fail_button.config(state="disabled")
@@ -382,6 +387,9 @@ class HermanacionApp(tk.Tk):
     # (Sin cambios en la lógica.)
     # ----------------------------------------------------------------
     def guardar_config(self):
+        """
+        Guarda la configuración en setting.cfg y recarga los valores en la app.
+        """
         config_data = (
             f"ip={self.ip_var.get()}\n"
             f"port={self.port_var.get()}\n"
@@ -390,9 +398,15 @@ class HermanacionApp(tk.Tk):
             f"timeout_mes={self.timeout_var.get()}\n"
             f"modo={self.modo_var.get()}\n"
         )
+
         try:
             with open("setting.cfg", "w") as f:
                 f.write(config_data)
+            
+            # ⚠️ IMPORTANTE: Recargar la configuración desde el archivo
+            mes.load_settings()  # <-- Carga nuevamente los parámetros desde setting.cfg
+
+            # También actualizamos `mes.setting` para que la app los use inmediatamente
             mes.setting.update({
                 "ip": self.ip_var.get(),
                 "port": self.port_var.get(),
@@ -401,7 +415,8 @@ class HermanacionApp(tk.Tk):
                 "timeout_mes": self.timeout_var.get(),
                 "modo": self.modo_var.get()
             })
-            self._log_message("Configuración guardada correctamente.")
+
+            self._log_message("Configuración guardada y recargada correctamente.")
         except Exception as e:
             self._log_message(f"Error al guardar configuración: {e}")
 
@@ -538,23 +553,24 @@ class HermanacionApp(tk.Tk):
         self._debounce_id = self.after(300, self._do_check_sn1)
 
     def _do_check_sn1(self):
-        current = self.housing_entry.get().strip()
-        if not current:
+        modo_actual = self.modo_var.get()
+        sn1 = self.housing_entry.get().strip()
+        if not sn1:
             self.status_circle_housing.config(fg="gray")
             return
-
-        if len(current) >= 25:
+        if len(sn1) >= 25:
             if not self.timer_started:
                 self.test_time_seconds = 0
                 self.update_test_time()
                 self.timer_started = True
 
+            # Realizamos BREQ
             ip = mes.setting.get("ip", "")
             port = int(mes.setting.get("port", ""))
             process = mes.setting.get("process", "")
             station = mes.setting.get("station", "")
 
-            breq_sn1 = f"BREQ|process={process}|station={station}|id={current}"
+            breq_sn1 = f"BREQ|process={process}|station={station}|id={sn1}"
             self._log_message(f"To SIM: {breq_sn1}")
 
             try:
@@ -572,19 +588,30 @@ class HermanacionApp(tk.Tk):
 
             self._log_message(f"From SIM: {resp}")
 
-            if self.check_breq_response(resp, current):
+            # Validamos la respuesta BREQ
+            if self.check_breq_response(resp, sn1):
                 self.status_circle_housing.config(fg="green")
                 self.housing_entry.configure(style="Valid.TEntry")
                 self.housing_entry.config(state="readonly")
-                self.pcb_entry.config(state="normal")
-                self.pcb_entry.focus_set()
+
+                # ---------------------------
+                #  DIFERENCIA AQUI:
+                #  Si el modo es Version Simple => pasamos DIRECTO a BCMP
+                # ---------------------------
+                if modo_actual == "Version Simple":
+                    self.ejecutar_bcmp_simple(sn1)
+                else:
+                    # Modo "Auto" => habilitar PCB
+                    # Modo "Manual" => habilitar PCB y/o otras lógicas
+                    self.pcb_entry.config(state="normal")
+                    self.pcb_entry.focus_set()
             else:
                 self.show_fail_popup()
                 self.status_circle_housing.config(fg="red")
                 self.housing_entry.configure(style="Error.TEntry", state="normal")
                 self.pcb_entry.config(state="disabled")
                 self.fail_count += 1
-            self.update_stats()
+                self.update_stats()
 
     def check_sn2(self, event):
         if self._debounce_id_sn2:
@@ -699,7 +726,59 @@ class HermanacionApp(tk.Tk):
             if len(partes) >= 3 and f"id={sn1}" in partes[1] and "status=PASS" in partes[2]:
                 return True
         return False
+    
+    # ----------------------------------------------------------------
+    # Ejecutar bcmp para version simple de ict
+    # ----------------------------------------------------------------
+    def ejecutar_bcmp_simple(self, sn1):
+        """
+        Envía BCMP en modo 'Versión Simple' y procesa la respuesta usando check_back_response.
+        BCMP|process={process}|station={station}|id={sn1}|status=PASS
+        """
+        ip = mes.setting.get("ip", "")
+        port = int(mes.setting.get("port", ""))
+        process = mes.setting.get("process", "")
+        station = mes.setting.get("station", "")
 
+        bcmp_msg = f"BCMP|process={process}|station={station}|id={sn1}|status=PASS"
+        self._log_message(f"To SIM: {bcmp_msg}")
+
+        try:
+            resp = mes.send_message(ip, port, bcmp_msg)
+        except TimeoutError:
+            self._log_message("From SIM: Tiempo de conexion agotado. (Version Simple BCMP)")
+            self.show_timeout_popup()
+            self.fail_count += 1
+            self.stop_test_time()
+            self.timer_started = False
+            self.update_stats()
+            return
+
+        self._log_message(f"From SIM: {resp}")
+
+        # Verificamos la respuesta con check_back_response en lugar de check_bcmp_response
+        if self.check_back_response(resp, sn1):
+            # PASS
+            self.show_pass_popup(auto_close_ms=3000)
+            self.pass_count += 1
+        else:
+            # FAIL
+            self.show_fail_popup()
+            self.fail_count += 1
+
+        self.stop_test_time()
+        self.timer_started = False
+        self.update_stats()
+
+        # Espera de N segundos y reset
+        periodo = int(mes.setting.get("periodo", 10)) * 1000
+        self.after(periodo, self.reset_entries)
+
+
+    # ----------------------------------------------------------------
+    # checkeo de la respuesta del BCMP enviado para analizar el back devulto
+    # ----------------------------------------------------------------
+    
     # ----------------------------------------------------------------
     # Reset- metodo para validar las secuencias y metodos
     # ----------------------------------------------------------------
@@ -739,12 +818,22 @@ class HermanacionApp(tk.Tk):
         self.fail_rate_label.config(text=f"Failure Rate: {rate:.0f}%")
 
     def check_breq_response(self, respuesta, sn):
+        """
+        Verifica si la respuesta a un BREQ contiene:
+        BCNF|id=<sn>|status=PASS
+        Retorna True si es PASS, False si es FAIL.
+        """
         if respuesta.startswith("BCNF"):
             partes = respuesta.split('|')
             if len(partes) < 3:
                 print("Respuesta BREQ incompleta:", partes)
                 return False
-            if f"id={sn}" in partes[1] and "status=PASS" in partes[2]:
+
+            # Extraer id y status
+            id_match = any(f"id={sn}" in parte for parte in partes)
+            status_match = any("status=PASS" in parte for parte in partes)
+
+            if id_match and status_match:
                 print(f"BREQ para {sn}: PASS")
                 return True
             else:

@@ -41,10 +41,19 @@ def read_setting(file):
     return cfg
 
 def load_settings():
-    """ Carga la configuración global en 'setting' """
     global setting
-    setting = read_setting(setting_file)
-    return setting
+    setting.clear()  # Limpia la configuración anterior
+    
+    try:
+        with open("setting.cfg", "r") as f:
+            for line in f:
+                key, value = line.strip().split("=")
+                setting[key] = value
+
+        print("⚡ Configuración recargada:", setting)  # ✅ Verifica que se cargan los valores
+
+    except Exception as e:
+        print(f"⚠️ Error al cargar configuración: {e}")
 
 def printand(data):
     """
@@ -121,6 +130,11 @@ def check_bcmp_response(respuesta, sn1, sn2):
     else:
         print("Respuesta con prefijo distinto de BACK. No se procesa:", respuesta)
         return False
+    
+def check_bcmp_response2(respuesta, sn1):
+    ...
+
+
 
 # ------------------------------------------------------------
 # (Opcional) Mover la antigua lógica de input a una función

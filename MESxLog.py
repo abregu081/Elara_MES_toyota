@@ -50,10 +50,10 @@ def load_settings():
                 key, value = line.strip().split("=")
                 setting[key] = value
 
-        print("⚡ Configuración recargada:", setting)  # ✅ Verifica que se cargan los valores
+        print("Configuración recargada:", setting)  # ✅ Verifica que se cargan los valores
 
     except Exception as e:
-        print(f"⚠️ Error al cargar configuración: {e}")
+        print(f"Error al cargar configuración: {e}")
 
 def printand(data):
     """
@@ -68,10 +68,15 @@ def send_message(ip, port, msg):
     Agrega un salto de línea al final.
     Retorna la respuesta recibida como string.
     """
-    timeout = int(setting.get('timeout_mes', 10))
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.settimeout(timeout)
-    client_socket.connect((ip, int(port)))
+    timeout = int(setting.get('timeout_mes', 30))
+    try:
+    
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.settimeout(timeout)
+        client_socket.connect((ip, int(port)))
+    except Exception as e:
+        print("Hostname no habilitado por IT ")
+
 
     print(f"Enviando: {msg}")
     client_socket.sendall((msg + "\n").encode('utf-8'))

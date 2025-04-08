@@ -3,7 +3,7 @@ import os
 
 current_directory = os.path.dirname(os.path.abspath(__file__))
 
-settings_path = os.path.join(current_directory, 'settings.txt')
+settings_path = os.path.join(current_directory, 'settings.cfg')
 
 def read_setting(file):
     setting = {}

@@ -510,15 +510,18 @@ class HermanacionApp(tk.Tk):
 
         label_fail = tk.Label(red_frame, text="FAIL", bg="red", fg="white", font=("Arial", 24, "bold"))
         label_fail.pack(expand=True)
+        
+        def close_popup():
+            self.reset_entries()
+            fail_win.destroy()
 
-        close_button = ttk.Button(fail_win, text="Cerrar", command=fail_win.destroy)
+        close_button = ttk.Button(fail_win, text="Cerrar", command=close_popup)
         close_button.pack(pady=10)
         
         # Forzamos centrado del popup
         self._center_popup(fail_win)
-        
-        # Después de 3000ms se destruye el popup y se resetean los campos.
-        fail_win.after(3000, lambda: (fail_win.destroy(), self.reset_entries()))
+
+        self._log_message("---------------------------------")
 
     # ----------------------------------------------------------------
     # Popup TIMEOUT
@@ -537,10 +540,18 @@ class HermanacionApp(tk.Tk):
         label_timeout = tk.Label(yellow_frame, text="TimeOut", bg="yellow", fg="black", font=("Arial", 24, "bold"))
         label_timeout.pack(expand=True)
 
-        close_button = ttk.Button(timeout_win, text="Cerrar", command=timeout_win.destroy)
+        def close_popup():
+            self.reset_entries()
+            timeout_win.destroy()
+
+        close_button = ttk.Button(timeout_win, text="Cerrar", command=close_popup)
         close_button.pack(pady=10)
-        # Forzamos centrado
+        
+        # Forzamos centrado del popup
         self._center_popup(timeout_win)
+
+        #linea para el inficar el fin del registro
+        self._log_message("---------------------------------")
 
         
     # ----------------------------------------------------------------
@@ -703,6 +714,7 @@ class HermanacionApp(tk.Tk):
 
         if self.check_back_response(resp, sn1):
             self._log_message("Hermanación exitosa.")
+            self._log_message("--------------------------")
             self.show_pass_popup(auto_close_ms=3000)
             self.hermanacion_realizada = True
             self.pass_count += 1
@@ -748,6 +760,7 @@ class HermanacionApp(tk.Tk):
         except TimeoutError:
             self._log_message("From SIM: Tiempo de conexion agotado. (Version Simple BCMP)")
             self.show_timeout_popup()
+            self._log_message("--------------------------------") #linea separadora para otro registro 
             self.fail_count += 1
             self.stop_test_time()
             self.timer_started = False
@@ -789,9 +802,6 @@ class HermanacionApp(tk.Tk):
         self.status_circle_pcb.config(fg="gray")
         self.housing_entry.configure(style="Normal.TEntry", state="normal")
         self.pcb_entry.configure(style="Normal.TEntry", state="disabled")
-        self.chat_text.config(state="normal")
-        self.chat_text.delete("1.0", tk.END)
-        self.chat_text.config(state="disabled")
         self.hermanacion_realizada = False
         self.test_time_seconds = 0
         self.timer_started = False

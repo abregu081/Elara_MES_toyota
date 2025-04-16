@@ -105,8 +105,8 @@ class HermanacionApp(tk.Tk):
         self.sn1_var = tk.StringVar()
         self.sn2_var = tk.StringVar()
 
-        housing_label = tk.Label(content_frame, text="Housing:", font=label_font, bg="white")
-        housing_label.grid(row=0, column=0, sticky="ew", padx=5, pady=2)
+        self.housing_label = tk.Label(content_frame, text="Housing:", font=label_font, bg="white")
+        self.housing_label.grid(row=0, column=0, sticky="ew", padx=5, pady=2)
         self.housing_entry = ttk.Entry(content_frame, width=50, font=entry_font,
                                        textvariable=self.sn1_var, justify="center",
                                        style="Normal.TEntry")
@@ -115,8 +115,8 @@ class HermanacionApp(tk.Tk):
                                               fg="gray", bg="white")
         self.status_circle_housing.grid(row=0, column=2, sticky="ew", padx=5, pady=2)
 
-        pcb_label = tk.Label(content_frame, text="PCB:", font=label_font, bg="white")
-        pcb_label.grid(row=1, column=0, sticky="ew", padx=5, pady=2)
+        self.pcb_label = tk.Label(content_frame, text="PCB:", font=label_font, bg="white")
+        self.pcb_label.grid(row=1, column=0, sticky="ew", padx=5, pady=2)
         self.pcb_entry = ttk.Entry(content_frame, width=50, font=entry_font,
                                    textvariable=self.sn2_var, justify="center",
                                    style="Normal.TEntry")
@@ -168,7 +168,7 @@ class HermanacionApp(tk.Tk):
         # Combobox para seleccionar el modo
         self.modo_var = tk.StringVar()
         self.modo_combobox = ttk.Combobox(config_frame, textvariable=self.modo_var,
-                                          values=["Auto", "Manual","Version Simple"], state="readonly", width=10)
+                                          values=["Hermanado", "Hermanado Manual","ICT"], state="readonly", width=10)
         self.modo_combobox.current(0)
         self.modo_combobox.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
         # Al cambiar de modo, llamamos a la función para habilitar/deshabilitar PASS/FAIL
@@ -296,19 +296,26 @@ class HermanacionApp(tk.Tk):
     # ----------------------------------------------------------------
     def _on_modo_changed(self, event=None):
         modo_actual = self.modo_var.get()
-        if modo_actual == "Manual":
+        if modo_actual == "Hermanado Manual":
             self.manual_pass_button.config(state="normal")
             self.manual_fail_button.config(state="normal")
-        elif modo_actual == "Version Simple":
+            self.housing_label.config(text="Housing:")
+            self.pcb_label.config(text="PCB:")
+
+        elif modo_actual == "ICT":
             # Deshabilitamos PCB, no se usa en modo simple
             self.pcb_entry.config(state="disabled")
+            self.housing_label.config(text="PCB:")
+            self.pcb_label.config(text="")
+            
             # Deshabilitamos los botones manuales
             self.manual_pass_button.config(state="disabled")
             self.manual_fail_button.config(state="disabled")
         else:
             self.manual_pass_button.config(state="disabled")
             self.manual_fail_button.config(state="disabled")
-
+            self.housing_label.config(text="Housing:")
+            self.pcb_label.config(text="PCB:")
     # ----------------------------------------------------------------
     # BCMP manual con status=PASS o FAIL
     # ----------------------------------------------------------------
@@ -609,7 +616,7 @@ class HermanacionApp(tk.Tk):
                 #  DIFERENCIA AQUI:
                 #  Si el modo es Version Simple => pasamos DIRECTO a BCMP
                 # ---------------------------
-                if modo_actual == "Version Simple":
+                if modo_actual == "ICT":
                     self.ejecutar_bcmp_simple(sn1)
                 else:
                     # Modo "Auto" => habilitar PCB

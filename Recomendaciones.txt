@@ -1,1 +1,0 @@
-Ademas de probar el to do, teneos que si o si validar lo bcmp con sim para que este este andnado

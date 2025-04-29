@@ -1,7 +1,7 @@
 from cx_Freeze import setup, Executable
 
 # Archivos adicionales (imágenes, iconos, etc.)
-includefiles = [r"E:\MES_Abregu\assets\Elara-logo.ico",r"E:\MES_Abregu\assets\Elara logo.png",r"E:\MES_Abregu\assets\Logo_Mirgor.png",r"E:\MES_Abregu\setting.cfg"]
+includefiles = [r"E:\MES_Abregu\assets", r"E:\MES_Abregu\setting.cfg", r"E:\MES_Abregu\Labels.cfg" ]
 
 # Dependencias opcionales (si tienes módulos externos)
 build_exe_options = {

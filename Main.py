@@ -3,18 +3,21 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 import os
 import MESxLog as mes
+from datetime import datetime
+
 
 class HermanacionApp(tk.Tk):
     def __init__(self):
+        version = "1.1 28-04-2025  by Abregu Tomas <3"
         super().__init__()
-        self.title("Elara - v1.0.0")
+        self.title(f"Elara - v{version}")
         self.state("zoomed")
         self.configure(bg="white")
-        
         mes.load_settings()  # Carga la configuración desde MESxLog
-
-        #estilo de los botones
-
+        mes.load_titles()  # Carga los títulos desde Labels.cfg
+        settings = mes.setting   #Traigo la data del archivo settings.cfg
+        titulos = mes.titulos    #Traigo la data del archivo Labels.ini
+        
         # Debounces para evitar múltiples validaciones
         self._debounce_id = None
         self._debounce_id_sn2 = None
@@ -92,7 +95,7 @@ class HermanacionApp(tk.Tk):
         main_frame.rowconfigure(1, weight=1)
         main_frame.columnconfigure(0, weight=1)
 
-        # ---- FRAME DE ENTRADAS (Housing, PCB) ----
+        # ---- FRAME DE ENTRADAS ----
         content_frame = tk.Frame(main_frame, bg="white")
         content_frame.grid(row=0, column=0, sticky="ew", pady=5)
         content_frame.columnconfigure(0, weight=0)
@@ -104,19 +107,18 @@ class HermanacionApp(tk.Tk):
 
         self.sn1_var = tk.StringVar()
         self.sn2_var = tk.StringVar()
-
-        self.housing_label = tk.Label(content_frame, text="Housing:", font=label_font, bg="white")
-        self.housing_label.grid(row=0, column=0, sticky="ew", padx=5, pady=2)
-        self.housing_entry = ttk.Entry(content_frame, width=50, font=entry_font,
+        self.SN1 = tk.Label(content_frame, text=titulos.get('SN1',''),font=label_font, bg="white")
+        self.SN1.grid(row=0, column=0, sticky="ew", padx=5, pady=2)
+        self.SN1_entry = ttk.Entry(content_frame, width=50, font=entry_font,
                                        textvariable=self.sn1_var, justify="center",
                                        style="Normal.TEntry")
-        self.housing_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
+        self.SN1_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
         self.status_circle_housing = tk.Label(content_frame, text="●", font=("Arial", 20, "bold"),
                                               fg="gray", bg="white")
         self.status_circle_housing.grid(row=0, column=2, sticky="ew", padx=5, pady=2)
 
-        self.pcb_label = tk.Label(content_frame, text="PCB:", font=label_font, bg="white")
-        self.pcb_label.grid(row=1, column=0, sticky="ew", padx=5, pady=2)
+        self.SN2 = tk.Label(content_frame, text=titulos.get("SN2",""), font=label_font, bg="white")
+        self.SN2.grid(row=1, column=0, sticky="ew", padx=5, pady=2)
         self.pcb_entry = ttk.Entry(content_frame, width=50, font=entry_font,
                                    textvariable=self.sn2_var, justify="center",
                                    style="Normal.TEntry")
@@ -126,7 +128,7 @@ class HermanacionApp(tk.Tk):
                                           fg="gray", bg="white")
         self.status_circle_pcb.grid(row=1, column=2, sticky="ew", padx=5, pady=2)
 
-        self.housing_entry.bind("<KeyRelease>", self.check_sn1)
+        self.SN1_entry.bind("<KeyRelease>", self.check_sn1)
         self.pcb_entry.bind("<KeyRelease>", self.check_sn2)
 
         # ---- FRAME Chat + Botones + Config ----
@@ -139,6 +141,21 @@ class HermanacionApp(tk.Tk):
         # Área de Chat (columna 0)
         self.chat_text = tk.Text(chat_buttons_frame, bg="white")
         self.chat_text.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self.chat_text.config(state="disabled")
+
+        # Scrollbar vertical
+        chat_scroll = ttk.Scrollbar(
+            chat_buttons_frame,
+            orient="vertical",
+            command=self.chat_text.yview
+        )
+        chat_scroll.grid(row=0, column=0, sticky="nse", padx=(0,5), pady=5)
+        self.chat_text.configure(yscrollcommand=chat_scroll.set)
+
+        # Colores de log
+        self.chat_text.tag_configure("outgoing", foreground="green")
+        self.chat_text.tag_configure("incoming", foreground="blue")
+        self.chat_text.tag_configure("default",  foreground="black")
         self.chat_text.config(state="disabled")
 
         # Panel derecho (columna 1)
@@ -168,7 +185,7 @@ class HermanacionApp(tk.Tk):
         # Combobox para seleccionar el modo
         self.modo_var = tk.StringVar()
         self.modo_combobox = ttk.Combobox(config_frame, textvariable=self.modo_var,
-                                          values=["Hermanado", "Hermanado Manual","ICT"], state="readonly", width=10)
+                                          values=["Hermanado", "Hermanado Manual","Envio BCMP"], state="readonly", width=10)
         self.modo_combobox.current(0)
         self.modo_combobox.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
         # Al cambiar de modo, llamamos a la función para habilitar/deshabilitar PASS/FAIL
@@ -193,12 +210,16 @@ class HermanacionApp(tk.Tk):
         self.process_var = tk.StringVar()
         self.timeout_var = tk.StringVar()
 
-        settings = mes.setting
+        
+
         self.ip_var.set(settings.get("ip", ""))
         self.port_var.set(settings.get("port", ""))
         self.station_var.set(settings.get("station", ""))
         self.process_var.set(settings.get("process", ""))
         self.timeout_var.set(settings.get("timeout_mes", "6"))
+        self.mensajeKey = settings.get("mensajeKey", "")
+        self.SN1_text = titulos.get("SN1","")
+        self.SN2_text = titulos.get("SN2","")
 
         config_labels = ["IP:", "Port:", "Station:", "Process:", "Timeout:"]
         config_vars = [self.ip_var, self.port_var, self.station_var, self.process_var, self.timeout_var]
@@ -292,30 +313,34 @@ class HermanacionApp(tk.Tk):
         win.geometry(f"{w}x{h}+{x}+{y}")
 
     # ----------------------------------------------------------------
-    # Cambia habilitación de botones PASS/FAIL según modo
+    # Selector de modos
     # ----------------------------------------------------------------
     def _on_modo_changed(self, event=None):
         modo_actual = self.modo_var.get()
         if modo_actual == "Hermanado Manual":
             self.manual_pass_button.config(state="normal")
             self.manual_fail_button.config(state="normal")
-            self.housing_label.config(text="Housing:")
-            self.pcb_label.config(text="PCB:")
+            self.SN1.config(text=f"{self.SN1_text}")
+            self.SN2.config(text=f"{self.SN2_text}")
+            self.pcb_entry.grid()
+            self.SN2.grid()
 
-        elif modo_actual == "ICT":
+        elif modo_actual == "Envio BCMP":
             # Deshabilitamos PCB, no se usa en modo simple
-            self.pcb_entry.config(state="disabled")
-            self.housing_label.config(text="PCB:")
-            self.pcb_label.config(text="")
-            
+            self.pcb_entry.grid_remove()
+            self.SN2.grid_remove()
+            self.SN1.config(text=f"{self.SN1_text}")
             # Deshabilitamos los botones manuales
             self.manual_pass_button.config(state="disabled")
             self.manual_fail_button.config(state="disabled")
         else:
             self.manual_pass_button.config(state="disabled")
             self.manual_fail_button.config(state="disabled")
-            self.housing_label.config(text="Housing:")
-            self.pcb_label.config(text="PCB:")
+            self.SN1.config(text=f"{self.SN1_text}")
+            self.SN2.config(text=f"{self.SN2_text}")
+            self.pcb_entry.grid()
+            self.SN2.grid()
+
     # ----------------------------------------------------------------
     # BCMP manual con status=PASS o FAIL
     # ----------------------------------------------------------------
@@ -324,7 +349,7 @@ class HermanacionApp(tk.Tk):
         Envía BCMP manual con el status indicado (PASS o FAIL).
         Actualiza contadores y popups según la respuesta BACK.
         """
-        sn1 = self.housing_entry.get().strip()
+        sn1 = self.SN1_entry.get().strip()
         sn2 = self.pcb_entry.get().strip()
 
         if not sn1 or not sn2:
@@ -335,8 +360,10 @@ class HermanacionApp(tk.Tk):
         port = int(mes.setting.get("port", ""))
         process = mes.setting.get("process", "")
         station = mes.setting.get("station", "")
+        mensajeKey = mes.setting.get("mensajeKey", "")
 
-        bcmp_msg = f"BCMP|process={process}|station={station}|id={sn2}|pid={sn1}|status={status}"
+
+        bcmp_msg = f"BCMP|process={process}|station={station}|id={sn2}|pid={sn1}|status={status}|msgT={mensajeKey}"
         self._log_message(f"To SIM (Manual BCMP): {bcmp_msg}")
 
         try:
@@ -389,6 +416,12 @@ class HermanacionApp(tk.Tk):
             self.save_button.config(state="disabled")
             self.unlock_button.config(text="Unlock")
 
+    #limpiar el chat
+    def _clear_log(self):
+        """Limpia todo el histórico del chat."""
+        self.chat_text.config(state="normal")
+        self.chat_text.delete("1.0", "end")
+        self.chat_text.config(state="disabled")
     # ----------------------------------------------------------------
     # Función para guardar la configuración en setting.cfg
     # (Sin cambios en la lógica.)
@@ -410,10 +443,8 @@ class HermanacionApp(tk.Tk):
             with open("setting.cfg", "w") as f:
                 f.write(config_data)
             
-            # ⚠️ IMPORTANTE: Recargar la configuración desde el archivo
-            mes.load_settings()  # <-- Carga nuevamente los parámetros desde setting.cfg
-
-            # También actualizamos `mes.setting` para que la app los use inmediatamente
+            
+            mes.load_settings() 
             mes.setting.update({
                 "ip": self.ip_var.get(),
                 "port": self.port_var.get(),
@@ -465,13 +496,13 @@ class HermanacionApp(tk.Tk):
         self.update_stats()
 
     # ----------------------------------------------------------------
-    # Validación BREQ (sin cambios en la lógica.)
+    # Validación BREQ (Leo la respuesta del BNCF BUSCANDO el PASS)
     # ----------------------------------------------------------------
     def check_breq_response(self, respuesta, sn):
         if respuesta.startswith("BCNF"):
             partes = respuesta.split('|')
-            if len(partes) >= 3:
-                if f"id={sn}" in partes[1] and "status=PASS" in partes[2]:
+            if len(partes) >= 2:
+                if "status=PASS" in partes[2]: 
                     return True
         return False
 
@@ -527,9 +558,6 @@ class HermanacionApp(tk.Tk):
         
         # Forzamos centrado del popup
         self._center_popup(fail_win)
-
-        self._log_message("---------------------------------")
-
     # ----------------------------------------------------------------
     # Popup TIMEOUT
     # + Centramos con _center_popup
@@ -556,10 +584,6 @@ class HermanacionApp(tk.Tk):
         
         # Forzamos centrado del popup
         self._center_popup(timeout_win)
-
-        #linea para el inficar el fin del registro
-        self._log_message("---------------------------------")
-
         
     # ----------------------------------------------------------------
     # Lógica check_sn1 / check_sn2 (BREQ) + hermanación = auto
@@ -572,11 +596,12 @@ class HermanacionApp(tk.Tk):
 
     def _do_check_sn1(self):
         modo_actual = self.modo_var.get()
-        sn1 = self.housing_entry.get().strip()
+        sn1 = self.SN1_entry.get().strip()
         if not sn1:
             self.status_circle_housing.config(fg="gray")
             return
         if len(sn1) >= 25:
+            self.chat_text.see("end")
             if not self.timer_started:
                 self.test_time_seconds = 0
                 self.update_test_time()
@@ -587,8 +612,9 @@ class HermanacionApp(tk.Tk):
             port = int(mes.setting.get("port", ""))
             process = mes.setting.get("process", "")
             station = mes.setting.get("station", "")
+            mensajeKey = mes.setting.get("mensajeKey", "")
 
-            breq_sn1 = f"BREQ|process={process}|station={station}|id={sn1}"
+            breq_sn1 = f"BREQ|process={process}|station={station}|id={sn1}|msgT={mensajeKey}"
             self._log_message(f"To SIM: {breq_sn1}")
 
             try:
@@ -597,7 +623,7 @@ class HermanacionApp(tk.Tk):
                 self._log_message("From SIM: Tiempo de conexion agotado.")
                 self.show_timeout_popup()
                 self.status_circle_housing.config(fg="red")
-                self.housing_entry.configure(style="Error.TEntry")
+                self.SN1.configure(style="Error.TEntry")
                 self.fail_count += 1
                 self.stop_test_time()
                 self.timer_started = False
@@ -609,14 +635,14 @@ class HermanacionApp(tk.Tk):
             # Validamos la respuesta BREQ
             if self.check_breq_response(resp, sn1):
                 self.status_circle_housing.config(fg="green")
-                self.housing_entry.configure(style="Valid.TEntry")
-                self.housing_entry.config(state="readonly")
+                self.SN1_entry.configure(style="Valid.TEntry")
+                self.SN1_entry.config(state="readonly")
 
                 # ---------------------------
                 #  DIFERENCIA AQUI:
                 #  Si el modo es Version Simple => pasamos DIRECTO a BCMP
                 # ---------------------------
-                if modo_actual == "ICT":
+                if modo_actual == "Envio BCMP":
                     self.ejecutar_bcmp_simple(sn1)
                 else:
                     # Modo "Auto" => habilitar PCB
@@ -626,7 +652,7 @@ class HermanacionApp(tk.Tk):
             else:
                 self.show_fail_popup()
                 self.status_circle_housing.config(fg="red")
-                self.housing_entry.configure(style="Error.TEntry", state="normal")
+                self.SN1_entry.configure(style="Error.TEntry", state="normal")
                 self.pcb_entry.config(state="disabled")
                 self.fail_count += 1
                 self.update_stats()
@@ -650,8 +676,9 @@ class HermanacionApp(tk.Tk):
             port = int(mes.setting.get("port", ""))
             process = mes.setting.get("process", "")
             station = mes.setting.get("station", "")
+            mensajeKey = mes.setting.get("mensajeKey", "")
 
-            breq_sn2 = f"BREQ|process={process}|station={station}|id={current}"
+            breq_sn2 = f"BREQ|process={process}|station={station}|id={current}|msgT={mensajeKey}"
             self._log_message(f"To SIM: {breq_sn2}")
 
             try:
@@ -683,11 +710,10 @@ class HermanacionApp(tk.Tk):
             self.update_stats()
 
     # ----------------------------------------------------------------
-    # Hermanación AUTO
-    # (ejecutar_bc_mp con status=PASS)
+    #                       Hermanación de dos SN
     # ----------------------------------------------------------------
     def ejecutar_hermanacion(self):
-        sn1 = self.housing_entry.get().strip()
+        sn1 = self.SN1_entry.get().strip()
         sn2 = self.pcb_entry.get().strip()
         if len(sn1) < 25 or len(sn2) < 25:
             self.show_fail_popup()
@@ -697,14 +723,14 @@ class HermanacionApp(tk.Tk):
     def ejecutar_bc_mp(self):
         if self.hermanacion_realizada:
             return
-        sn1 = self.housing_entry.get().strip()
+        sn1 = self.SN1_entry.get().strip()
         sn2 = self.pcb_entry.get().strip()
         ip = mes.setting.get("ip", "")
         port = int(mes.setting.get("port", ""))
         process = mes.setting.get("process", "")
         station = mes.setting.get("station", "")
-        bcmp_msg = f"BCMP|process={process}|station={station}|id={sn2}|pid={sn1}|status=PASS"
-
+        mensajeKey = mes.setting.get("mensajeKey", "")
+        bcmp_msg = f"BCMP|process={process}|station={station}|id={sn2}|pid={sn1}|status=PASS|msgT={mensajeKey}"
         try:
             resp = mes.send_message(ip, port, bcmp_msg)
         except TimeoutError:
@@ -721,7 +747,6 @@ class HermanacionApp(tk.Tk):
 
         if self.check_back_response(resp, sn1):
             self._log_message("Hermanación exitosa.")
-            self._log_message("--------------------------")
             self.show_pass_popup(auto_close_ms=3000)
             self.hermanacion_realizada = True
             self.pass_count += 1
@@ -729,7 +754,7 @@ class HermanacionApp(tk.Tk):
             self.timer_started = False
             self.update_stats()
         else:
-            self._log_message("Hermanación FALLÓ.")
+            self._log_message("Fallo en la Hermanacion.")
             self.show_fail_popup()
             self.fail_count += 1
             self.stop_test_time()
@@ -742,12 +767,12 @@ class HermanacionApp(tk.Tk):
     def check_back_response(self, respuesta, sn1):
         if respuesta.startswith("BACK"):
             partes = respuesta.split('|')
-            if len(partes) >= 3 and f"id={sn1}" in partes[1] and "status=PASS" in partes[2]:
+            if len(partes) >= 1 and "status=PASS" in partes[2]:
                 return True
         return False
     
     # ----------------------------------------------------------------
-    # Ejecutar bcmp para version simple de ict
+    # Ejecutar bcmp para version simple / un solo sn de Envio BCMP
     # ----------------------------------------------------------------
     def ejecutar_bcmp_simple(self, sn1):
         """
@@ -758,16 +783,16 @@ class HermanacionApp(tk.Tk):
         port = int(mes.setting.get("port", ""))
         process = mes.setting.get("process", "")
         station = mes.setting.get("station", "")
+        mensajeKey = mes.setting.get("mensajeKey", "")
 
-        bcmp_msg = f"BCMP|process={process}|station={station}|id={sn1}|status=PASS"
+        bcmp_msg = f"BCMP|process={process}|station={station}|id={sn1}|status=PASS|msgT={mensajeKey}"
         self._log_message(f"To SIM: {bcmp_msg}")
 
         try:
             resp = mes.send_message(ip, port, bcmp_msg)
         except TimeoutError:
-            self._log_message("From SIM: Tiempo de conexion agotado. (Version Simple BCMP)")
+            self._log_message("From SIM: Tiempo de conexion agotado")
             self.show_timeout_popup()
-            self._log_message("--------------------------------") #linea separadora para otro registro 
             self.fail_count += 1
             self.stop_test_time()
             self.timer_started = False
@@ -794,11 +819,6 @@ class HermanacionApp(tk.Tk):
         periodo = int(mes.setting.get("periodo", 10)) * 1000
         self.after(periodo, self.reset_entries)
 
-
-    # ----------------------------------------------------------------
-    # checkeo de la respuesta del BCMP enviado para analizar el back devulto
-    # ----------------------------------------------------------------
-    
     # ----------------------------------------------------------------
     # Reset- metodo para validar las secuencias y metodos
     # ----------------------------------------------------------------
@@ -807,21 +827,42 @@ class HermanacionApp(tk.Tk):
         self.sn2_var.set("")
         self.status_circle_housing.config(fg="gray")
         self.status_circle_pcb.config(fg="gray")
-        self.housing_entry.configure(style="Normal.TEntry", state="normal")
+        self.SN1_entry.configure(style="Normal.TEntry", state="normal")
         self.pcb_entry.configure(style="Normal.TEntry", state="disabled")
         self.hermanacion_realizada = False
         self.test_time_seconds = 0
         self.timer_started = False
         self.stop_test_time()
-        self.housing_entry.focus_set()
+        self.SN1.focus_set()
 
     # ----------------------------------------------------------------
     # Log - muestra los mensajes en tiempo real y en directo
     # ----------------------------------------------------------------
-    def _log_message(self, msg):
+    def _log_message(self, msg: str):
+        """
+        • T<S  (verde)   → envíos
+        • S>T  (azul)    → respuestas
+        • Negro          → otros
+        Autoscroll solo si el usuario está al final.
+        """
+        ts = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+        if msg.startswith("To SIM:"):
+            contenido = msg[len("To SIM:"):].strip()
+            linea, tag = f"T<S {contenido} {ts}", "outgoing"
+        elif msg.startswith("From SIM:"):
+            contenido = msg[len("From SIM:"):].strip()
+            linea, tag = f"S>T {contenido} {ts}", "incoming"
+        else:
+            linea, tag = f"{msg} {ts}", "default"
+
+        # ¿El visor ya está en la parte inferior?
+        autoscroll = self.chat_text.yview()[1] >= 0.999
+
         self.chat_text.config(state="normal")
-        self.chat_text.insert("end", msg + "\n")
-        self.chat_text.see("end")
+        self.chat_text.insert("end", linea + "\n", tag)
+        if autoscroll:
+            self.chat_text.see("end")
         self.chat_text.config(state="disabled")
 
     def update_stats(self):
@@ -833,32 +874,6 @@ class HermanacionApp(tk.Tk):
         self.pass_label.config(text=f"Pass: {self.pass_count}")
         self.fail_label.config(text=f"Fail: {self.fail_count}")
         self.fail_rate_label.config(text=f"Failure Rate: {rate:.0f}%")
-
-    def check_breq_response(self, respuesta, sn):
-        """
-        Verifica si la respuesta a un BREQ contiene:
-        BCNF|id=<sn>|status=PASS
-        Retorna True si es PASS, False si es FAIL.
-        """
-        if respuesta.startswith("BCNF"):
-            partes = respuesta.split('|')
-            if len(partes) < 3:
-                print("Respuesta BREQ incompleta:", partes)
-                return False
-
-            # Extraer id y status
-            id_match = any(f"id={sn}" in parte for parte in partes)
-            status_match = any("status=PASS" in parte for parte in partes)
-
-            if id_match and status_match:
-                print(f"BREQ para {sn}: PASS")
-                return True
-            else:
-                print(f"BREQ para {sn}: FAIL (ID o STATUS no coinciden)")
-                return False
-        else:
-            print("Respuesta desconocida para BREQ:", respuesta)
-            return False
 
 if __name__ == "__main__":
     app = HermanacionApp()

@@ -5,4 +5,13 @@
 -Agregar al campo una version de archivado de mensajes de SIM elemento [0]
 -Auto foco en el sn1 al finalizar la recorrida
  
+24-04-25 ("Nuevo Cambio"):
+    -try except  con la conexion 
+    -Eliminacion de settings y cuadros segun el modo de uso
+    -Scalabilidad de labels y entrys hasta 3
+    -Realizar Estrutura de log para la generacion "Fecha hora" "Generacion de la estrucutura del hermanado" y siguiendo el formato Andres  
+    -Mejora en el test-time y el conteo de los de los hermanados realizados
+    -Realizar la parametrizacion de la cantidad de codigos a hermanar.
+    -Generar la 3ra Clave en el .ini
+    -Objetos de las funciones generidas
 

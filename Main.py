@@ -4,11 +4,11 @@ from PIL import Image, ImageTk
 import os
 import MESxLog as mes
 from datetime import datetime
-
+import csv
 
 class HermanacionApp(tk.Tk):
     def __init__(self):
-        version = "1.1 28-04-2025  by Abregu Tomas <3"
+        version = "1.1 06-05-2025"
         super().__init__()
         self.title(f"Elara - v{version}")
         self.state("zoomed")
@@ -24,7 +24,6 @@ class HermanacionApp(tk.Tk):
 
         # BANDERA PARA LA HERMANACIÓN
         self.hermanacion_realizada = False
-
         # -----------------------
         # Contadores y cronómetro
         # -----------------------
@@ -210,8 +209,6 @@ class HermanacionApp(tk.Tk):
         self.process_var = tk.StringVar()
         self.timeout_var = tk.StringVar()
 
-        
-
         self.ip_var.set(settings.get("ip", ""))
         self.port_var.set(settings.get("port", ""))
         self.station_var.set(settings.get("station", ""))
@@ -296,7 +293,18 @@ class HermanacionApp(tk.Tk):
         self.test_time_label = tk.Label(test_time_box, text="Test Time: 00:00",
                                         font=("Montserrat", 12, "bold"), bg="white")
         self.test_time_label.pack(expand=True, fill="both", padx=10, pady=10)
+    
 
+    #  Funcion de cursor
+    def auto_cursor(self,ventana):
+        banderaa_do_check1 = 0
+        self.focus_set(ventana)
+        if banderaa_do_check1 == 0:
+            self.after(1000, lambda: self.focus_set(ventana))
+            self._debounce_id = self.after(0.5, self._do_check_sn1)
+            banderaa_do_check1 = 1
+        else:
+            bandeera_do_check1 = 0
     # ----------------------------------------------------------------
     # Centrar popups para pass/fail/timeout
     # ----------------------------------------------------------------
@@ -326,11 +334,9 @@ class HermanacionApp(tk.Tk):
             self.SN2.grid()
 
         elif modo_actual == "Envio BCMP":
-            # Deshabilitamos PCB, no se usa en modo simple
             self.pcb_entry.grid_remove()
             self.SN2.grid_remove()
             self.SN1.config(text=f"{self.SN1_text}")
-            # Deshabilitamos los botones manuales
             self.manual_pass_button.config(state="disabled")
             self.manual_fail_button.config(state="disabled")
         else:
@@ -340,6 +346,8 @@ class HermanacionApp(tk.Tk):
             self.SN2.config(text=f"{self.SN2_text}")
             self.pcb_entry.grid()
             self.SN2.grid()
+
+        self.SN1_entry.focus_set()
 
     # ----------------------------------------------------------------
     # BCMP manual con status=PASS o FAIL
@@ -523,14 +531,15 @@ class HermanacionApp(tk.Tk):
         label_pass = tk.Label(green_frame, text="PASS", bg="green", fg="white", font=("Arial", 24, "bold"))
         label_pass.pack(expand=True)
 
-        close_button = ttk.Button(pass_win, text="Cerrar", command=pass_win.destroy)
+        close_button = ttk.Button(pass_win, text="Cerrar", command=lambda: [pass_win.destroy(), self.SN1_entry.focus_set()])
         close_button.pack(pady=10)
 
         # Forzamos centrado
         self._center_popup(pass_win)
 
         if auto_close_ms is not None:
-            pass_win.after(auto_close_ms, pass_win.destroy)
+            pass_win.after(auto_close_ms, lambda: [pass_win.destroy(), self.SN1_entry.focus_set()])
+
 
     # ----------------------------------------------------------------
     # Popup FAIL
@@ -552,6 +561,7 @@ class HermanacionApp(tk.Tk):
         def close_popup():
             self.reset_entries()
             fail_win.destroy()
+            self.SN1_entry.focus_set()
 
         close_button = ttk.Button(fail_win, text="Cerrar", command=close_popup)
         close_button.pack(pady=10)
@@ -578,6 +588,7 @@ class HermanacionApp(tk.Tk):
         def close_popup():
             self.reset_entries()
             timeout_win.destroy()
+            self.SN1_entry.focus_set()
 
         close_button = ttk.Button(timeout_win, text="Cerrar", command=close_popup)
         close_button.pack(pady=10)
@@ -587,7 +598,6 @@ class HermanacionApp(tk.Tk):
         
     # ----------------------------------------------------------------
     # Lógica check_sn1 / check_sn2 (BREQ) + hermanación = auto
-    # (Se mantiene sin tocar tus contadores y cronómetro)
     # ----------------------------------------------------------------
     def check_sn1(self, event):
         if self._debounce_id:
@@ -597,6 +607,7 @@ class HermanacionApp(tk.Tk):
     def _do_check_sn1(self):
         modo_actual = self.modo_var.get()
         sn1 = self.SN1_entry.get().strip()
+        self.pcb_entry.focus_set()
         if not sn1:
             self.status_circle_housing.config(fg="gray")
             return
@@ -661,6 +672,7 @@ class HermanacionApp(tk.Tk):
         if self._debounce_id_sn2:
             self.after_cancel(self._debounce_id_sn2)
         self._debounce_id_sn2 = self.after(300, self._do_check_sn2)
+        
 
     def _do_check_sn2(self):
         if self.pcb_entry.cget("state") == "disabled":
@@ -753,6 +765,7 @@ class HermanacionApp(tk.Tk):
             self.stop_test_time()
             self.timer_started = False
             self.update_stats()
+            self.guardar_log_csv(sn1, "PASS", bcmp_msg, resp)
         else:
             self._log_message("Fallo en la Hermanacion.")
             self.show_fail_popup()
@@ -760,6 +773,7 @@ class HermanacionApp(tk.Tk):
             self.stop_test_time()
             self.timer_started = False
             self.update_stats()
+            self.guardar_log_csv(sn1, "FAIL", bcmp_msg, resp)
 
         periodo = int(mes.setting.get("periodo", 10)) * 1000
         self.after(periodo, self.reset_entries)
@@ -800,16 +814,19 @@ class HermanacionApp(tk.Tk):
             return
 
         self._log_message(f"From SIM: {resp}")
+        self.SN1_entry.focus_force()
 
         # Verificamos la respuesta con check_back_response en lugar de check_bcmp_response
         if self.check_back_response(resp, sn1):
             # PASS
             self.show_pass_popup(auto_close_ms=3000)
             self.pass_count += 1
+            self.guardar_log_csv(sn1, "PASS", bcmp_msg, resp)
         else:
             # FAIL
             self.show_fail_popup()
             self.fail_count += 1
+            self.guardar_log_csv(sn1, "FAIL", bcmp_msg, resp)
 
         self.stop_test_time()
         self.timer_started = False
@@ -818,6 +835,7 @@ class HermanacionApp(tk.Tk):
         # Espera de N segundos y reset
         periodo = int(mes.setting.get("periodo", 10)) * 1000
         self.after(periodo, self.reset_entries)
+        self.pcb_entry.focus_set()
 
     # ----------------------------------------------------------------
     # Reset- metodo para validar las secuencias y metodos
@@ -874,6 +892,26 @@ class HermanacionApp(tk.Tk):
         self.pass_label.config(text=f"Pass: {self.pass_count}")
         self.fail_label.config(text=f"Fail: {self.fail_count}")
         self.fail_rate_label.config(text=f"Failure Rate: {rate:.0f}%")
+
+    #Funcion para guardar los log
+    def guardar_log_csv(self, sn1, resultado, envio_sim, devolucion_sim):
+        fecha_hora = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        carpeta_base = os.path.join("C:\\DGS\\Log", resultado.upper())
+        os.makedirs(carpeta_base, exist_ok=True)
+        archivo_nombre = f"{sn1}_{fecha_hora}.csv"
+        ruta_completa = os.path.join(carpeta_base, archivo_nombre)
+
+        with open(ruta_completa, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(["SN1", "Resultado", "Fecha", "Hora", "Envio a SIM", "Devolucion de SIM"])
+            writer.writerow([
+                sn1,
+                resultado,
+                datetime.now().strftime("%Y-%m-%d"),
+                datetime.now().strftime("%H:%M:%S"),
+                envio_sim,
+                devolucion_sim
+            ])
 
 if __name__ == "__main__":
     app = HermanacionApp()
